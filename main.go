@@ -1,0 +1,82 @@
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/golang-collections/collections/queue"
+	"github.com/google/uuid"
+	"github.com/project-crewmen/crewmen/manager"
+	"github.com/project-crewmen/crewmen/task"
+	"github.com/project-crewmen/crewmen/worker"
+	"github.com/project-crewmen/crewmen/node"
+)
+
+func main() {
+	// Create a task
+	t := task.Task{
+		ID:     uuid.New(),
+		Name:   "Task-1",
+		State:  task.Pending,
+		Image:  "Image-1",
+		Memory: 1024,
+		Disk:   1,
+	}
+
+	// Create a task event
+	te := task.TaskEvent{
+		ID:        uuid.New(),
+		State:     task.Pending,
+		Timestamp: time.Now(),
+		Task:      t,
+	}
+
+	// Print task and taskevent objects
+	fmt.Printf("task: %v\n", t)
+	fmt.Printf("task event: %v\n", te)
+
+	// Create a worker
+	w := worker.Worker{
+		Queue: *queue.New(),
+		Db:    make(map[uuid.UUID]task.Task),
+	}
+
+	// Print the worker object
+	fmt.Printf("worker: %v\n", w)
+
+	// Call the worker's methods
+	w.CollectStats()
+	w.RunTask()
+	w.StartTask()
+	w.StopTask()
+
+	// Create a manager
+	m := manager.Manager{
+		Pending: *queue.New(),
+		TaskDb:  make(map[string][]task.Task),
+		EventDb: make(map[string][]task.TaskEvent),
+		Workers: []string{w.Name},
+	}
+
+	// Print the manager object
+	fmt.Printf("manager: %v\n", m)
+
+	// Call the manager's methods
+	m.SelectWorker()
+	m.UpdateTasks()
+	m.SelectTasks()
+	m.SendWork()
+
+	// Create a node
+	n := node.Node{
+		Name:   "Node-1",
+		Ip:     "192.168.1.1",
+		Cores:  4,
+		Memory: 1024,
+		Disk:   25,
+		Role:   "worker",
+	}
+
+	// Print the node object
+	fmt.Printf("node: %v\n", n)
+}
