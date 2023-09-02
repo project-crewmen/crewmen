@@ -16,36 +16,22 @@ import (
 	"github.com/google/uuid"
 )
 
-/*
-Define the state of a task's life cycle.
--- Initial State is Pending.
--- When its scheduled to be run, then its in the Scheduled state.
--- If the machine successfully started the task, then its in the Running state.
--- Once task executed successfully, its in Completed state.
--- If task crashes at some point then its Failed state.
-*/
-type State int
-
-const (
-	Pending State = iota
-	Scheduled
-	Running
-	Completed
-	Failed
-)
-
 type Task struct {
 	// Main attributes of a task
-	ID    uuid.UUID
-	Name  string
-	State State
+	ID          uuid.UUID
+	ContainerID string
+	Name        string
+	State       State
 	// Associated docker container related metadata
 	Image         string
-	Memory        int
-	Disk          int
+	Cpu           float64
+	Memory        int64
+	Disk          int64
 	ExposedPorts  nat.PortSet
 	PortBindings  map[string]string
 	RestartPolicy string
+	StartTime     time.Time
+	FinishTime    time.Time
 }
 
 // To handle the events related to Tasks. (Usually to swtich the task states)
@@ -62,12 +48,26 @@ type Config struct {
 	AttachStdin   bool
 	AttachStdout  bool
 	AttachStderr  bool
+	ExposedPorts  nat.PortSet
 	Cmd           []string
-	Image         string   // Image name that container runs
+	Image         string // Image name that container runs
+	Cpu           float64
 	Memory        int64    // To tell docker-daemon about the memory required for a task
 	Disk          int64    // To tell docker-daemon about the space required for a task
 	Env           []string // Specify environment variables that passed into the container
 	RestartPolicy string   // Specify to docker-daemon what to do when the container fails
+}
+
+func NewConfig(t *Task) *Config {
+	return &Config{
+		Name:          t.Name,
+		ExposedPorts:  t.ExposedPorts,
+		Image:         t.Image,
+		Cpu:           t.Cpu,
+		Memory:        t.Memory,
+		Disk:          t.Disk,
+		RestartPolicy: t.RestartPolicy,
+	}
 }
 
 // Specifications to run a task as a Docker container
@@ -75,6 +75,15 @@ type Docker struct {
 	Client      *client.Client
 	Config      Config
 	ContainerId string
+}
+
+func NewDocker(c *Config) *Docker {
+	dc, _ := client.NewClientWithOpts(client.FromEnv)
+
+	return &Docker{
+		Client: dc,
+		Config: *c,
+	}
 }
 
 // Docker info wrapper for common results
@@ -159,20 +168,20 @@ func (d *Docker) Run() DockerResult {
 
 // Stop Container
 // CHANGED: removed id string parameter
-func (d *Docker) Stop() DockerResult {
-	log.Printf("Attempting to stop container %v", d.ContainerId)
+func (d *Docker) Stop(id string) DockerResult {
+	log.Printf("Attempting to stop container %v", id)
 
 	ctx := context.Background()
 	// Changed nil to container.StopOptions{}
 	noWaitTimeout := 0 // to not wait for the container to exit gracefully
-	err := d.Client.ContainerStop(ctx, d.ContainerId, container.StopOptions{ Timeout: &noWaitTimeout})
+	err := d.Client.ContainerStop(ctx, id, container.StopOptions{Timeout: &noWaitTimeout})
 
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
 	}
 
-	err = d.Client.ContainerRemove(ctx, d.ContainerId, types.ContainerRemoveOptions{RemoveVolumes: true, RemoveLinks: false, Force: false})
+	err = d.Client.ContainerRemove(ctx, id, types.ContainerRemoveOptions{RemoveVolumes: true, RemoveLinks: false, Force: false})
 
 	if err != nil {
 		panic(err)
