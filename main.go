@@ -33,6 +33,8 @@ func main() {
 
 	// Runs on a seperate go routine
 	go runTasks(&w)
+	go w.CollectStats()
+	
 	api.Start()
 }
 

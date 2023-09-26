@@ -12,6 +12,7 @@ import (
 	"github.com/project-crewmen/crewmen/task"
 )
 
+// For Tasks
 func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the body of the request
 	d := json.NewDecoder(r.Body)
@@ -65,4 +66,11 @@ func (a *Api) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	a.Worker.AddTask(taskCopy)
 
 	log.Printf("Added task %v to stop container %v\n", taskToStop.ID, taskToStop.ContainerID)
+}
+
+// For Metrics
+func (a *Api) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(a.Worker.Stats)
 }

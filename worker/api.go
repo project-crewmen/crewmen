@@ -17,8 +17,8 @@ type Api struct {
 	Address string
 	Port    int
 	// Pointer to other types in the crewmen
-	Worker  *Worker  // Reference to a Worker object to exprose its services via API
-	Router  *chi.Mux // Expose the routing features of chi package
+	Worker *Worker  // Reference to a Worker object to exprose its services via API
+	Router *chi.Mux // Expose the routing features of chi package
 }
 
 func (a *Api) initRouter() {
@@ -26,10 +26,12 @@ func (a *Api) initRouter() {
 
 	a.Router.Route("/tasks", func(r chi.Router) {
 		r.Post("/", a.StartTaskHandler)
-
 		r.Get("/", a.GetTasksHandler)
-
 		r.Delete("/{taskID}", a.StopTaskHandler)
+	})
+
+	a.Router.Route("/stats", func(r chi.Router) {
+		r.Get("/", a.GetStatsHandler)
 	})
 }
 

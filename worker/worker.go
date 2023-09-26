@@ -18,6 +18,7 @@ type Worker struct {
 	Name      string
 	Queue     queue.Queue              // Used to accept a task from manager (FIFO order follows)
 	Db        map[uuid.UUID]*task.Task // In-memory DB: Used to track tasks
+	Stats     *Stats                   // Statistics
 	TaskCount int                      // Number of task operate by the worker at runtime
 }
 
@@ -31,8 +32,19 @@ func (w *Worker) GetTasks() []*task.Task {
 	return tasks
 }
 
+// Regularly collect metrics
 func (w *Worker) CollectStats() {
-	fmt.Println("I will collect stats")
+	// This for loop indicates infinite loop with delay of 15 seconds
+	for {
+		log.Println("Collecting stats")
+		w.Stats = GetStats()
+		w.TaskCount = w.Stats.TaskCount
+		time.Sleep(15 * time.Second)
+	}
+}
+
+func (w *Worker) AddTask(t task.Task) {
+	w.Queue.Enqueue(t)
 }
 
 func (w *Worker) RunTask() task.DockerResult {
@@ -121,8 +133,4 @@ func (w *Worker) StopTask(t task.Task) task.DockerResult {
 	log.Printf("Stopped and removed container %v for task %v", t.ContainerID, t.ID)
 
 	return result
-}
-
-func (w *Worker) AddTask(t task.Task) {
-	w.Queue.Enqueue(t)
 }
