@@ -34,7 +34,7 @@ func main() {
 
 	// Runs on a seperate go routines
 	go runTasks(&w)
-	go w.CollectStats()
+	// go w.CollectStats()
 	go api.Start()
 
 	// Instantiating a manager

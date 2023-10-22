@@ -1,0 +1,47 @@
+[
+    {
+        "ID": "e797135e-71e5-43e2-a83b-8298a2ebc112",
+        "ContainerID": "7234e6dfafbc4451be423c45b34c3b1551ac44e5b56b7b82cbd7ea02fc93aeae",
+        "Name": "test-container-0",
+        "State": 2,
+        "Image": "strm/helloworld-http",
+        "Cpu": 0,
+        "Memory": 0,
+        "Disk": 0,
+        "ExposedPorts": null,
+        "PortBindings": null,
+        "RestartPolicy": "",
+        "StartTime": "2023-10-22T07:19:49.8327893Z",
+        "FinishTime": "0001-01-01T00:00:00Z"
+    },
+    {
+        "ID": "201a51b3-674e-43b6-b4d4-089b43a55f21",
+        "ContainerID": "277fa5efdcf1968a18bc027fb31847007846ab1effdf6319fff1335ac74b1468",
+        "Name": "test-container-1",
+        "State": 2,
+        "Image": "strm/helloworld-http",
+        "Cpu": 0,
+        "Memory": 0,
+        "Disk": 0,
+        "ExposedPorts": null,
+        "PortBindings": null,
+        "RestartPolicy": "",
+        "StartTime": "2023-10-22T07:20:03.718286Z",
+        "FinishTime": "0001-01-01T00:00:00Z"
+    },
+    {
+        "ID": "3638297f-4324-45c0-81f8-ca84ecb7ed33",
+        "ContainerID": "7f3dc13b65586b33bb14268008192aacb51d7bd2f9bc73e1b3f40d47f80dd01a",
+        "Name": "test-container-2",
+        "State": 2,
+        "Image": "strm/helloworld-http",
+        "Cpu": 0,
+        "Memory": 0,
+        "Disk": 0,
+        "ExposedPorts": null,
+        "PortBindings": null,
+        "RestartPolicy": "",
+        "StartTime": "2023-10-22T07:20:17.1365253Z",
+        "FinishTime": "0001-01-01T00:00:00Z"
+    }
+]

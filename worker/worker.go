@@ -18,7 +18,7 @@ type Worker struct {
 	Name      string
 	Queue     queue.Queue              // Used to accept a task from manager (FIFO order follows)
 	Db        map[uuid.UUID]*task.Task // In-memory DB: Used to track tasks
-	Stats     *Stats                   // Statistics
+	// Stats     *Stats                   // Statistics
 	TaskCount int                      // Number of task operate by the worker at runtime
 }
 
@@ -33,15 +33,15 @@ func (w *Worker) GetTasks() []*task.Task {
 }
 
 // Regularly collect metrics
-func (w *Worker) CollectStats() {
-	// This for loop indicates infinite loop with delay of 15 seconds
-	for {
-		log.Println("Collecting stats")
-		w.Stats = GetStats()
-		w.TaskCount = w.Stats.TaskCount
-		time.Sleep(15 * time.Second)
-	}
-}
+// func (w *Worker) CollectStats() {
+// 	// This for loop indicates infinite loop with delay of 15 seconds
+// 	for {
+// 		log.Println("Collecting stats")
+// 		w.Stats = GetStats()
+// 		w.TaskCount = w.Stats.TaskCount
+// 		time.Sleep(15 * time.Second)
+// 	}
+// }
 
 func (w *Worker) AddTask(t task.Task) {
 	w.Queue.Enqueue(t)
