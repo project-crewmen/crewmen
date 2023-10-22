@@ -49,6 +49,7 @@ func New(workers []string) *Manager {
 func (m *Manager) SelectWorker() string {
 	var newWorker int
 
+	// Select and assign a worker in round robin fashion
 	if m.LastWorker+1 < len(m.Workers) {
 		newWorker = m.LastWorker + 1
 		m.LastWorker++
@@ -60,8 +61,10 @@ func (m *Manager) SelectWorker() string {
 	return m.Workers[newWorker]
 }
 
+/* Periodically get the status update from workers to update the manager's state */
 func (m *Manager) UpdateTasks() {
 	for _, worker := range m.Workers {
+		// Query each worker and get their own tasks list
 		log.Printf("Checking worker %v for task updates\n", worker)
 
 		url := fmt.Sprintf("http://%s/tasks", worker)
@@ -75,6 +78,7 @@ func (m *Manager) UpdateTasks() {
 			log.Printf("Error sending request: %v\n", err)
 		}
 
+		// Decode the response received from a worker
 		d := json.NewDecoder(resp.Body)
 		var tasks []*task.Task
 		err = d.Decode(&tasks)
@@ -83,6 +87,7 @@ func (m *Manager) UpdateTasks() {
 			log.Printf("Error unmarshalling tasks: %s\n", err.Error())
 		}
 
+		// Go through all the tasks of a worker
 		for _, t := range tasks {
 			log.Printf("Attempting to update task %v\n", t.ID)
 
@@ -93,6 +98,7 @@ func (m *Manager) UpdateTasks() {
 				return
 			}
 
+			// Check if the task's state in the manager and worker is same or not
 			if m.TaskDb[t.ID].State != t.State {
 				m.TaskDb[t.ID].State = t.State
 			}
@@ -105,18 +111,23 @@ func (m *Manager) UpdateTasks() {
 }
 
 func (m *Manager) SendWork() {
+	// Check if there are task events in the pending queue
 	if m.Pending.Len() > 0 {
+		// Select a worker to run a task
 		w := m.SelectWorker()
 
+		// Pull a task from pending queue
 		e := m.Pending.Dequeue()
 		te := e.(task.TaskEvent)
 		t := te.Task
 		log.Printf("Pulled %v off pending queue\n", t)
 
+		// Update managers track
 		m.EventDb[te.ID] = &te
 		m.WorkerTaskMap[w] = append(m.WorkerTaskMap[w], te.Task.ID)
 		m.TaskWorkerMap[t.ID] = w
 
+		// Set the state of the task to be scheduled
 		t.State = task.Scheduled
 		m.TaskDb[t.ID] = &t
 
@@ -125,6 +136,7 @@ func (m *Manager) SendWork() {
 			log.Printf("Unable to marshal task object: %v\n", t)
 		}
 
+		// JSON encode the task event and send it to the selected worker
 		url := fmt.Sprintf("http://%s/tasks", w)
 		resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
 
@@ -134,6 +146,7 @@ func (m *Manager) SendWork() {
 			return
 		}
 
+		// Decord and check the response from the worker
 		d := json.NewDecoder(resp.Body)
 
 		if resp.StatusCode != http.StatusCreated {
@@ -164,5 +177,6 @@ func (m *Manager) SendWork() {
 }
 
 func (m *Manager) AddTask(te task.TaskEvent) {
+	// Enqueue a task to the manager's pending queue
 	m.Pending.Enqueue(te)
 }
