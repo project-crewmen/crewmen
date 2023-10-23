@@ -1,10 +1,11 @@
-package worker
+package manager
 
 import (
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -16,7 +17,7 @@ import (
 func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the body of the request
 	d := json.NewDecoder(r.Body)
-	d.DisallowUnknownFields()
+	// d.DisallowUnknownFields()
 
 	te := task.TaskEvent{}
 	err := d.Decode(&te)
@@ -33,7 +34,7 @@ func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Worker.AddTask(te.Task)
+	a.Manager.AddTask(te)
 	log.Printf("Added task %v\n", te.Task.ID)
 	w.WriteHeader(201) // HTTP Status Code 201 - Successful POST request and resource created
 	json.NewEncoder(w).Encode(te.Task)
@@ -42,7 +43,7 @@ func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Api) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200) // HTTP Status Code 200 - OK
-	json.NewEncoder(w).Encode(a.Worker.GetTasks())
+	json.NewEncoder(w).Encode(a.Manager.GetTasks())
 }
 
 func (a *Api) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,24 +54,24 @@ func (a *Api) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tID, _ := uuid.Parse(taskID)
-	_, ok := a.Worker.Db[tID]
+	_, ok := a.Manager.TaskDb[tID]
 	if !ok {
 		log.Printf("No tasks with the taskID: %v found!", tID)
 		w.WriteHeader(404)
 	}
 
-	taskToStop := a.Worker.Db[tID]
+	te := task.TaskEvent{
+		ID: uuid.New(),
+		State: task.Completed,
+		Timestamp: time.Now(),
+	}
+
+	taskToStop := a.Manager.TaskDb[tID]
 	// Make a copy of task data, such that we are not modifying the actural task data on DB
 	taskCopy := *taskToStop
 	taskCopy.State = task.Completed
-	a.Worker.AddTask(taskCopy)
+	te.Task = taskCopy
+	a.Manager.AddTask(te)
 
-	log.Printf("Added task %v to stop container %v\n", taskToStop.ID, taskToStop.ContainerID)
-}
-
-// For Metrics
-func (a *Api) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	// json.NewEncoder(w).Encode(a.Worker.Stats)
+	log.Printf("Added task %v to stop container %v\n", te.ID, taskToStop.ContainerID)
 }

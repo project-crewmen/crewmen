@@ -1,4 +1,4 @@
-package worker
+package manager
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type Api struct {
 	Address string
 	Port    int
 	// Pointer to other types in the crewmen
-	Worker *Worker  // Reference to a Worker object to exprose its services via API
+	Manager *Manager  // Reference to a Worker object to exprose its services via API
 	Router *chi.Mux // Expose the routing features of chi package
 }
 
@@ -29,14 +29,10 @@ func (a *Api) initRouter() {
 		r.Get("/", a.GetTasksHandler)
 		r.Delete("/{taskID}", a.StopTaskHandler)
 	})
-
-	a.Router.Route("/stats", func(r chi.Router) {
-		r.Get("/", a.GetStatsHandler)
-	})
 }
 
 func (a *Api) Start() {
 	a.initRouter()
-	fmt.Println("Worker API Started")
+	fmt.Println("Manager API Started")
 	http.ListenAndServe(fmt.Sprintf("%s:%d", a.Address, a.Port), a.Router)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/golang-collections/collections/queue"
 	"github.com/google/uuid"
 
-	"github.com/project-crewmen/crewmen/task"
+	"crewmen/task"
 )
 
 // Track on the tasks
@@ -47,7 +47,24 @@ func (w *Worker) AddTask(t task.Task) {
 	w.Queue.Enqueue(t)
 }
 
-func (w *Worker) RunTask() task.DockerResult {
+func (w *Worker) RunTasks() {
+	// Continuos loop that checks worker's queue for tasks
+	for {
+		if w.Queue.Len() != 0 {
+			result := w.runTask()
+			if result.Error != nil {
+				log.Printf("Error running task: %v\n", result.Error)
+			}
+		} else {
+			log.Printf("No tasks to process currently.\n")
+		}
+
+		log.Println("Sleeping for 10 seconds")
+		time.Sleep(10 * time.Second)
+	}
+}
+
+func (w *Worker) runTask() task.DockerResult {
 	// Pull a task from the worker's queue
 	t := w.Queue.Dequeue()
 	if t == nil {
@@ -57,6 +74,7 @@ func (w *Worker) RunTask() task.DockerResult {
 	}
 
 	taskQueued := t.(task.Task)
+	fmt.Printf("Found task in queue: %v:\n", taskQueued)
 
 	// Get the task from worker's DB
 	taskPersisted := w.Db[taskQueued.ID]
@@ -77,12 +95,14 @@ func (w *Worker) RunTask() task.DockerResult {
 		case task.Completed:
 			result = w.StopTask(taskQueued)
 		default:
+			fmt.Printf("This is a mistake. taskPersisted: %v, taskQueued: %v\n", taskPersisted, taskQueued)
 			result.Error = errors.New("we should not get here")
 		}
 	} else {
 		// Return error if it is an invalid transition
 		err := fmt.Errorf("invalid transition from %v to %v", taskPersisted.State, taskQueued.State)
 		result.Error = err
+		return result
 	}
 
 	return result
@@ -90,7 +110,7 @@ func (w *Worker) RunTask() task.DockerResult {
 
 func (w *Worker) StartTask(t task.Task) task.DockerResult {
 	// Update the start time of the task
-	t.StartTime = time.Now().UTC()
+	// t.StartTime = time.Now().UTC()
 	// Create an instance of Docker struct to talk with Docker daemon via Docker SDK
 	config := task.NewConfig(&t)
 	d := task.NewDocker(config)

@@ -2,93 +2,54 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"os"
+	"strconv"
 
-	// "os"
-	"time"
-	// "strconv"
-
-	// "github.com/docker/docker/client"
 	"github.com/golang-collections/collections/queue"
 	"github.com/google/uuid"
 
-	// "github.com/project-crewmen/crewmen/manager"
-	// "github.com/project-crewmen/crewmen/node"
-	"github.com/project-crewmen/crewmen/manager"
-	"github.com/project-crewmen/crewmen/task"
-	"github.com/project-crewmen/crewmen/worker"
+	"crewmen/manager"
+	"crewmen/task"
+	"crewmen/worker"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	host := "localhost"
-	port := 8080
+	// Load environment variables
+	envErr := godotenv.Load(".env")
+	if envErr != nil {
+		fmt.Printf("Could not load .env file")
+		os.Exit(1)
+	}
 
-	fmt.Printf("Starting the crewmen on  %v:%v\n", host, port)
+	whost := os.Getenv("CREWMEN_WORKER_HOST")
+	wport, _ := strconv.Atoi(os.Getenv("CREWMEN_WORKER_PORT"))
+
+	mhost := os.Getenv("CREWMEN_MANAGER_HOST")
+	mport, _ := strconv.Atoi(os.Getenv("CREWMEN_MANAGER_PORT"))
+
+	fmt.Printf("------ Starting Crewmen Worker(%s:%d) ------\n", whost, wport)
 
 	w := worker.Worker{
 		Queue: *queue.New(),
 		Db:    make(map[uuid.UUID]*task.Task),
 	}
 
-	api := worker.Api{Address: host, Port: port, Worker: &w}
+	wapi := worker.Api{Address: whost, Port: wport, Worker: &w}
 
-	// Runs on a seperate go routines
-	go runTasks(&w)
+	go w.RunTasks()
 	// go w.CollectStats()
-	go api.Start()
+	go wapi.Start()
 
-	// Instantiating a manager
-	workers := []string{fmt.Sprintf("%s:%d", host, port)}
+	fmt.Printf("------ Starting Crewmen Manager(%s:%d) ------\n", mhost, mport)
+
+	workers := []string{fmt.Sprintf("%s:%d", whost, wport)}
 	m := manager.New(workers)
+	mapi := manager.Api{Address: mhost, Port: mport, Manager: m}
 
-	// Add three tasks to the manager
-	for i := 0; i < 3; i++ {
-		t := task.Task{
-			ID:    uuid.New(),
-			Name:  fmt.Sprintf("test-container-%d", i),
-			State: task.Scheduled,
-			Image: "strm/helloworld-http",
-		}
+	go m.ProcessTasks()
+	go m.UpdateTasks()
 
-		te := task.TaskEvent{
-			ID:    uuid.New(),
-			State: task.Running,
-			Task:  t,
-		}
-
-		m.AddTask(te)
-		m.SendWork()
-	}
-
-	go func() {
-		for {
-			fmt.Printf("[Manager] Updating tasks from %d workers\n", len(m.Workers))
-			m.UpdateTasks()
-			time.Sleep(15 * time.Second)
-		}
-	}()
-
-	for {
-		for _, t := range m.TaskDb {
-			fmt.Printf("[Manager] Task--> id: %s, state: %d\n", t.ID, t.State)
-			time.Sleep(15 * time.Second)
-		}
-	}
-}
-
-func runTasks(w *worker.Worker) {
-	// Continuos loop that checks worker's queue for tasks
-	for {
-		if w.Queue.Len() != 0 {
-			result := w.RunTask()
-			if result.Error != nil {
-				log.Printf("Error running task: %v\n", result.Error)
-			}
-		} else {
-			log.Printf("No tasks to process currently.\n")
-		}
-
-		log.Println("Sleeping for 10 seconds")
-		time.Sleep(10 * time.Second)
-	}
+	mapi.Start()
 }

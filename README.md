@@ -35,3 +35,7 @@
 ## Debug Docker
 * **Docker Image Pull Permissions** - Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get http://%2Fvar%2Frun%2Fdocker.sock/v1.40/containers/json: dial unix /var/run/docker.sock: connect: permission denied
 `sudo chmod 666 /var/run/docker.sock`
+
+## Go Helpers
+How to download and import a new go module?
+`go get MODULE_NAME`

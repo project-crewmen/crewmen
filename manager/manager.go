@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/golang-collections/collections/queue"
 	"github.com/google/uuid"
 
-	"github.com/project-crewmen/crewmen/task"
-	"github.com/project-crewmen/crewmen/worker"
+	"crewmen/task"
+	"crewmen/worker"
 )
 
 // Track on the workers
@@ -61,8 +62,18 @@ func (m *Manager) SelectWorker() string {
 	return m.Workers[newWorker]
 }
 
-/* Periodically get the status update from workers to update the manager's state */
 func (m *Manager) UpdateTasks() {
+	for {
+		log.Println("Checking for task updates from workers")
+		m.updateTasks()
+		log.Println("Task updates completed")
+		log.Println("Sleeping for 15 seconds")
+		time.Sleep(15 * time.Second)
+	}
+}
+
+/* Periodically get the status update from workers to update the manager's state */
+func (m *Manager) updateTasks() {
 	for _, worker := range m.Workers {
 		// Query each worker and get their own tasks list
 		log.Printf("Checking worker %v for task updates\n", worker)
@@ -71,7 +82,7 @@ func (m *Manager) UpdateTasks() {
 		resp, err := http.Get(url)
 
 		if err != nil {
-			log.Printf("Error connectinh to %v: %v\n", worker, err)
+			log.Printf("Error connecting to %v: %v\n", worker, err)
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -107,6 +118,16 @@ func (m *Manager) UpdateTasks() {
 			m.TaskDb[t.ID].FinishTime = t.FinishTime
 			m.TaskDb[t.ID].ContainerID = t.ContainerID
 		}
+	}
+}
+
+// Endless loop to Send work for workers via manager
+func (m *Manager) ProcessTasks() {
+	for {
+		log.Println("Processing any tasks in the queue")
+		m.SendWork()
+		log.Println("Sleeping for 10 seconds")
+		time.Sleep(10 * time.Second)
 	}
 }
 
@@ -174,6 +195,16 @@ func (m *Manager) SendWork() {
 	} else {
 		log.Printf("No work in the queue")
 	}
+}
+
+func (m *Manager) GetTasks() []*task.Task {
+	tasks := []*task.Task{}
+
+	for _, t := range m.TaskDb {
+		tasks = append(tasks, t)
+	}
+
+	return tasks
 }
 
 func (m *Manager) AddTask(te task.TaskEvent) {
