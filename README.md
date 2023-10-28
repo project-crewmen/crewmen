@@ -1,7 +1,8 @@
 # Crewmen - Multi-Constrained Container Orchestrator
 <img src="./brand/Logo.png" alt="Crewmen Logo" style="width: 200px;">
 
-Official Web Site - [Crewmen]("https://crewmen.vercel.app/")
+Official Web Site - <a href="https://crewmen.vercel.app/" target="_blank">Crewmen</a>
+
 
 ## Installation
 1. Install Go lang in your device
