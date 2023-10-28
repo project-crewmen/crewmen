@@ -15,11 +15,11 @@ import (
 // Track on the tasks
 
 type Worker struct {
-	Name      string
-	Queue     queue.Queue              // Used to accept a task from manager (FIFO order follows)
-	Db        map[uuid.UUID]*task.Task // In-memory DB: Used to track tasks
+	Name  string
+	Queue queue.Queue              // Used to accept a task from manager (FIFO order follows)
+	Db    map[uuid.UUID]*task.Task // In-memory DB: Used to track tasks
 	// Stats     *Stats                   // Statistics
-	TaskCount int                      // Number of task operate by the worker at runtime
+	TaskCount int // Number of task operate by the worker at runtime
 }
 
 func (w *Worker) GetTasks() []*task.Task {
@@ -153,4 +153,50 @@ func (w *Worker) StopTask(t task.Task) task.DockerResult {
 	log.Printf("Stopped and removed container %v for task %v", t.ContainerID, t.ID)
 
 	return result
+}
+
+// Health Checks
+func (w *Worker) InspectTask(t task.Task) task.DockerInspectResponse {
+	config := task.NewConfig(&t)
+	d := task.NewDocker(config)
+
+	return d.Inspect(t.ContainerID)
+}
+
+func (w *Worker) UpdateTasks() {
+	for {
+		log.Println("Checking status of tasks")
+		w.updateTasks()
+		log.Println("Task updates completed")
+		log.Println("Sleeping for 15 seconds")
+		time.Sleep(15 * time.Second)
+	}
+}
+
+// To check whether container started and running properly without any errors
+// 1. Check the task is in Running state
+// 2. Call InspectTask() for a task's container
+// 3. If throws an error, flag task's state as Failed
+func (w *Worker) updateTasks() {
+	for id, t := range w.Db {
+		if t.State == task.Running {
+			resp := w.InspectTask(*t)
+
+			if resp.Error != nil {
+				fmt.Printf("ERROR: %v", resp.Error)
+			}
+
+			if resp.Container == nil {
+				log.Printf("No container for running task %s", id)
+				w.Db[id].State = task.Failed
+			}
+
+			if resp.Container.State.Status == "exited" {
+				log.Printf("Container for task %s in non-running state %s", id, resp.Container.State.Status)
+				w.Db[id].State = task.Failed
+			}
+
+			w.Db[id].HostPorts = resp.Container.NetworkSettings.NetworkSettingsBase.Ports
+		}
+	}
 }

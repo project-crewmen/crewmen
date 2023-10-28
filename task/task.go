@@ -28,10 +28,14 @@ type Task struct {
 	Memory        int64
 	Disk          int64
 	ExposedPorts  nat.PortSet
+	HostPorts     nat.PortMap
 	PortBindings  map[string]string
 	RestartPolicy string
 	StartTime     time.Time
 	FinishTime    time.Time
+	// For Health Checks
+	HealthCheck   string
+	RestartCount  int
 }
 
 // To handle the events related to Tasks. (Usually to swtich the task states)
@@ -92,6 +96,12 @@ type DockerResult struct {
 	Action      string
 	ContainerId string
 	Result      string
+}
+
+// Handle the response from Docker ContainerInspect()
+type DockerInspectResponse struct {
+	Error     error
+	Container *types.ContainerJSON // Meta details about the referenced Container
 }
 
 // Pull Image from Dockerhub and run the container as a task
@@ -188,4 +198,30 @@ func (d *Docker) Stop(id string) DockerResult {
 	}
 
 	return DockerResult{Action: "stop", Result: "success", Error: nil}
+}
+
+func (d *Docker) Remove(id string) DockerResult {
+	log.Printf("Attempting to remove container %v", id)
+
+	ctx := context.Background()
+	err := d.Client.ContainerRemove(ctx, id, types.ContainerRemoveOptions{RemoveVolumes: true, RemoveLinks: false, Force: false})
+	if err != nil {
+		log.Printf("Error removing container %s: %v\n", id, err)
+		return DockerResult{Error: err}
+	}
+
+	return DockerResult{Action: "Remove", Result: "success", Error: nil}
+}
+
+// To Inspect the Container
+func (d *Docker) Inspect(containerID string) DockerInspectResponse {
+	dc, _ := client.NewClientWithOpts(client.FromEnv)
+	ctx := context.Background()
+	resp, err := dc.ContainerInspect(ctx, containerID)
+	if err != nil {
+		log.Printf("Error inspecting container: %s\n", err)
+		return DockerInspectResponse{Error: err}
+	}
+
+	return DockerInspectResponse{Container: &resp}
 }
