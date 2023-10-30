@@ -8,7 +8,12 @@ import (
 	"time"
 )
 
-// Assign a task to a worker
+/*
+	<--- Scheduler : Assign a task for each worker --->
+	* Goal - 	Spread the tasks across the cluster of worker machines such that,
+			it minimize the resource consumption(Memory, CPU, Disk etc.)
+	* Optimization - All workers must do some task. Neither overloaded nor starved.
+*/
 
 const (
 	LIEB = 1.53960071783900203869
@@ -27,7 +32,7 @@ type Scheduler interface {
 
 /*
 ---------------------
-Round Robin Scheduler
+Round Robin Strategy
 ---------------------
 */
 type RoundRobin struct {
@@ -94,6 +99,11 @@ func (r *RoundRobin) Pick(scores map[string]float64, candidates []*node.Node) *n
 	return bestNode
 }
 
+/*
+---------------------
+Gready Strategy
+---------------------
+*/
 type Greedy struct {
 	Name string
 }
@@ -138,6 +148,11 @@ func (g *Greedy) Pick(candidates map[string]float64, nodes []*node.Node) *node.N
 	return bestNode
 }
 
+/*
+---------------------
+E-PVM Strategy
+---------------------
+*/
 type Epvm struct {
 	Name string
 }
@@ -148,9 +163,10 @@ func (g *Epvm) SelectCandidateNodes(t task.Task, nodes []*node.Node) []*node.Nod
 
 func (g *Epvm) Score(t task.Task, nodes []*node.Node) map[string]float64 {
 	nodeScores := make(map[string]float64)
-	maxJobs := 4.0
+	maxJobs := 4.0 // Node can handle maximum 4 tasks at once
 
 	for _, node := range nodes {
+		// Calculations required to determine the marginal_cost
 		cpuUsage, err := calculateCpuUsage(node)
 		if err != nil {
 			log.Printf("error calculating CPU usage for node %s, skipping: %v", node.Name, err)
@@ -192,6 +208,8 @@ func (g *Epvm) Pick(scores map[string]float64, candidates []*node.Node) *node.No
 }
 
 // UTILS
+// Check that, the resrouces that the taskk is requesting is less than the resources available in the node
+// In here we only check the disk availability
 func selectCandidateNodes(t task.Task, nodes []*node.Node) []*node.Node {
 	var candidates []*node.Node
 	for node := range nodes {
