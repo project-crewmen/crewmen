@@ -17,13 +17,13 @@ import (
 func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the body of the request
 	d := json.NewDecoder(r.Body)
-	// d.DisallowUnknownFields()
+	d.DisallowUnknownFields()
 
 	te := task.TaskEvent{}
 	err := d.Decode(&te)
 	if err != nil {
 		msg := fmt.Sprintf("Error unmarshalling body: %v\n", err)
-		log.Printf(msg)
+		log.Println(msg)
 		w.WriteHeader(400) // HTTP Status Code 400 - Bad Request
 		e := ErrorResponse{
 			HTTPStatusCode: 400,
