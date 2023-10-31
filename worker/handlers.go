@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"crewmen/stats"
 	"crewmen/task"
 )
 
@@ -16,7 +17,6 @@ import (
 func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the body of the request
 	d := json.NewDecoder(r.Body)
-	d.DisallowUnknownFields()
 
 	te := task.TaskEvent{}
 	err := d.Decode(&te)
@@ -34,7 +34,7 @@ func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.Worker.AddTask(te.Task)
-	log.Printf("Added task %v\n", te.Task.ID)
+	log.Printf("[worker] Added task %v\n", te.Task.ID)
 	w.WriteHeader(201) // HTTP Status Code 201 - Successful POST request and resource created
 	json.NewEncoder(w).Encode(te.Task)
 }
@@ -53,30 +53,39 @@ func (a *Api) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tID, _ := uuid.Parse(taskID)
-	_, ok := a.Worker.Db[tID]
-	if !ok {
-		log.Printf("No tasks with the taskID: %v found!", tID)
+	taskToStop, err := a.Worker.Db.Get(tID.String())
+	if err != nil {
+		log.Printf("No tasks with ID %v found", tID)
 		w.WriteHeader(404)
 	}
 
-	taskToStop := a.Worker.Db[tID]
 	// Make a copy of task data, such that we are not modifying the actural task data on DB
-	taskCopy := *taskToStop
+	taskCopy := *taskToStop.(*task.Task)
 	taskCopy.State = task.Completed
 	a.Worker.AddTask(taskCopy)
 
-	log.Printf("Added task %v to stop container %v\n", taskToStop.ID, taskToStop.ContainerID)
+	log.Printf("Added task %v to stop container %v\n", taskCopy.ID.String(), taskCopy.ContainerID)
+	w.WriteHeader(204)
 }
 
 // For Metrics
 func (a *Api) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	if a.Worker.Stats != nil {
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(a.Worker.Stats)
+
+		return
+	}
+
 	w.WriteHeader(200)
-	// json.NewEncoder(w).Encode(a.Worker.Stats)
+	stats := stats.GetStats()
+	json.NewEncoder(w).Encode(stats)
 }
 
 // Health Checks
-func  (a *Api) InspectTaskHandler(w http.ResponseWriter, r *http.Request){
+func (a *Api) InspectTaskHandler(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskID")
 	if taskID == "" {
 		log.Printf("No taskID passed in request.\n")
@@ -84,15 +93,14 @@ func  (a *Api) InspectTaskHandler(w http.ResponseWriter, r *http.Request){
 	}
 
 	tID, _ := uuid.Parse(taskID)
-	_, ok := a.Worker.Db[tID]
-	if !ok {
+	t, err := a.Worker.Db.Get(tID.String())
+	if err != nil {
 		log.Printf("No task with ID %v found", tID)
 		w.WriteHeader(404)
 		return
 	}
 
-	t := a.Worker.Db[tID]
-	resp := a.Worker.InspectTask(*t)
+	resp := a.Worker.InspectTask(t.(task.Task))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)

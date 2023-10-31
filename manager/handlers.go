@@ -49,29 +49,28 @@ func (a *Api) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Api) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskID")
 	if taskID == "" {
-		log.Printf("No taskID \n")
+		log.Printf("No taskID passed in request.\n")
 		w.WriteHeader(400)
 	}
 
 	tID, _ := uuid.Parse(taskID)
-	_, ok := a.Manager.TaskDb[tID]
-	if !ok {
-		log.Printf("No tasks with the taskID: %v found!", tID)
+	taskToStop, err := a.Manager.TaskDb.Get(tID.String())
+	if err != nil {
+		log.Printf("No tasks with ID: %v found", tID)
 		w.WriteHeader(404)
+		return
 	}
 
 	te := task.TaskEvent{
-		ID: uuid.New(),
-		State: task.Completed,
+		ID:        uuid.New(),
+		State:     task.Completed,
 		Timestamp: time.Now(),
 	}
 
-	taskToStop := a.Manager.TaskDb[tID]
 	// Make a copy of task data, such that we are not modifying the actural task data on DB
-	taskCopy := *taskToStop
-	taskCopy.State = task.Completed
-	te.Task = taskCopy
+	taskCopy := taskToStop.(*task.Task)
+	te.Task = *taskCopy
 	a.Manager.AddTask(te)
 
-	log.Printf("Added task %v to stop container %v\n", te.ID, taskToStop.ContainerID)
+	log.Printf("Added task event %v to stop task %v\n", te.ID, taskCopy.ID)
 }
