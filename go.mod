@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
+	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker v24.0.5+incompatible // indirect
