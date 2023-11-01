@@ -10,12 +10,29 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+/*
+	<--- Store : Persist the task meta data --->
+	* Enable crewmen to keep track of each task's current state
+	* Enable crewmen to make informed decisions about scheduling
+	* Enable the system to help tasks recover from failures
+*/
+
+// Store interface enable developers to integrate different database solutions for crewmen
+// By default crewmen has implmented 2 data stores namely in-memory data store and persistent data store using BoltDB
+// in-memory <-- exists only on RAM and will fulsed away once the orchestrator is restarted
+// boltDB <- embedded datastore that directly run within crewmen (BoltDB is a key-value data store)
 type Store interface {
 	Put(key string, value interface{}) error
 	Get(key string) (interface{}, error)
 	List() (interface{}, error)
 	Count() (int, error)
 }
+
+/*
+	Following implementations satisfy these needs,
+	--- TaskStore = Both Manager and Worker use task store
+	--- EventStore = Only manager uses event store
+*/
 
 // For In-memory Task storage
 type InMemoryTaskStore struct {
@@ -107,12 +124,12 @@ func (i *InMemoryTaskEventStore) Count()(int, error) {
 	return len(i.Db), nil
 }
 
-// For TaskStore
+// For BoltDB Persistent Task storage
 type TaskStore struct {
 	Db *bolt.DB
-	DbFile string
-	FileMode os.FileMode
-	Bucket string
+	DbFile string // presistend file on disk
+	FileMode os.FileMode // required permissions to read/write to the DbFile
+	Bucket string // BoltDB collection is called "buckets"
 }
 
 func NewTaskStore(file string, mode os.FileMode, bucket string) (*TaskStore, error){
@@ -247,7 +264,7 @@ func (t *TaskStore) Put(key string, value interface{}) error {
 	return tasks, nil
  }
 
-//  For EventStore
+// For BoltDB Persistent TaskEvent storage
 type EventStore struct {
 	DbFile string
 	FileMode os.FileMode

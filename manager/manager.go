@@ -80,6 +80,7 @@ func New(workers []string, schedulerType string, dbType string) *Manager {
 		ts = store.NewInMemoryTaskStore()
 		es = store.NewInMemoryTaskEventStore()
 	case "persistent":
+		// 0600 file mode grant read/write permissions only to the user
 		ts, err = store.NewTaskStore("tasks.db", 0600, "tasks")
 		es, err = store.NewEventStore("events.db", 0600, "events")
 	}
@@ -162,6 +163,7 @@ func (m *Manager) updateTasks() {
 		for _, t := range tasks {
 			log.Printf("[manager] Attempting to update task %v\n", t.ID)
 
+			// Get a task from manager's task DB
 			result, err := m.TaskDb.Get(t.ID.String())
 			if err != nil {
 				log.Printf("[manager] %s", err)
@@ -174,6 +176,7 @@ func (m *Manager) updateTasks() {
 				continue
 			}
 
+			// Update the task
 			if taskPersisted.State != t.State {
 				taskPersisted.State = t.State
 			}

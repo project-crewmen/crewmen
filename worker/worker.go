@@ -200,7 +200,7 @@ func (w *Worker) StopTask(t task.Task) task.DockerResult {
 	t.State = task.Completed
 	// Save updated task t at worker's DB
 	w.Db.Put(t.ID.String(), &t)
-	log.Printf("Stopped and removed container %v for task %v", t.ContainerID, t.ID)
+	log.Printf("Stopped and removed container %v for task %v\n", t.ContainerID, t.ID)
 
 	return removeResult
 }
